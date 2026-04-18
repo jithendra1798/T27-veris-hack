@@ -20,11 +20,18 @@ export default function SponsorFooter() {
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {sponsors.map((sponsor) => (
+          {sponsors.map((sponsor, index) => (
             <div
-              className="metric-card rounded-[1.2rem] px-4 py-3 text-left"
+              className={`metric-card rounded-[1.2rem] px-4 py-3 text-left ${
+                sponsor.label === "Veris"
+                  ? "border-emerald-300/22 bg-[linear-gradient(180deg,rgba(53,213,166,0.12),rgba(6,15,27,0.72))]"
+                  : ""
+              }`}
               key={sponsor.label}
             >
+              <p className="font-mono text-[0.66rem] uppercase tracking-[0.2em] text-slate-400">
+                {(index + 1).toString().padStart(2, "0")}
+              </p>
               <p className="text-lg font-semibold tracking-[-0.04em] text-white">
                 {sponsor.label}
               </p>

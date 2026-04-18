@@ -86,10 +86,17 @@ export default function RiskReport({
 }: RiskReportProps) {
   const score = currentReport?.score ?? 0;
   const vulnerabilities = currentReport?.vulnerabilities ?? exploitedCount;
+  const riskPercent = Math.max(8, Math.min(score * 10, 100));
   const scoreDelta =
     currentReport && previousReport
       ? Number((currentReport.score - previousReport.score).toFixed(1))
       : null;
+  const scoreTone =
+    score >= 6
+      ? "from-rose-500 via-orange-300 to-amber-200"
+      : score >= 3
+        ? "from-amber-400 via-yellow-300 to-emerald-200"
+        : "from-emerald-500 via-cyan-300 to-cyan-100";
 
   return (
     <section className="panel-shell panel-enter flex min-h-[320px] flex-col p-4 sm:p-5">
@@ -125,9 +132,54 @@ export default function RiskReport({
         </div>
       </div>
 
+      <div className="mt-4 rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(6,15,27,0.76))] p-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-slate-400">
+              Current posture
+            </p>
+            <div className="mt-3 flex items-end gap-3">
+              <span className="text-6xl font-semibold tracking-[-0.08em] text-white">
+                {score.toFixed(1)}
+              </span>
+              <span className="pb-2 text-lg text-slate-300">/10</span>
+            </div>
+          </div>
+
+          <div
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              scoreDelta === null
+                ? "bg-white/8 text-slate-200"
+                : scoreDelta <= 0
+                  ? "bg-emerald-300/12 text-emerald-50"
+                  : "bg-rose-300/12 text-rose-50"
+            }`}
+          >
+            {scoreDelta === null
+              ? "Waiting"
+              : scoreDelta > 0
+                ? `+${scoreDelta} delta`
+                : `${scoreDelta} delta`}
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <div className="relative h-3 overflow-hidden rounded-full bg-white/8">
+            <div
+              className={`score-meter h-full rounded-full bg-gradient-to-r ${scoreTone}`}
+              style={{ width: `${riskPercent}%` }}
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[0.72rem] font-mono uppercase tracking-[0.2em] text-slate-400">
+            <span>Contained</span>
+            <span>Judge-pause danger</span>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <AnimatedMetric decimals={1} label="Risk score" value={score} />
         <AnimatedMetric label="Vulnerabilities" value={vulnerabilities} />
+        <AnimatedMetric label="Attack volume" value={totalAttacks} />
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -180,7 +232,7 @@ export default function RiskReport({
         </div>
       </div>
 
-      <div className="mt-4 rounded-[1.6rem] border border-emerald-300/18 bg-[linear-gradient(180deg,rgba(53,213,166,0.12),rgba(7,18,28,0.76))] p-4">
+      <div className="mt-4 rounded-[1.7rem] border border-emerald-300/18 bg-[linear-gradient(180deg,rgba(53,213,166,0.14),rgba(7,18,28,0.8))] p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-emerald-100">

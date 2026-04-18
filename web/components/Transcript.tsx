@@ -17,6 +17,12 @@ export default function Transcript({
   attacks,
   featuredAttack,
 }: TranscriptProps) {
+  const exploitedCount = attacks.filter((attack) => attack.verdict?.exploited).length;
+  const citationCount = attacks.reduce(
+    (count, attack) => count + attack.citations.length,
+    0,
+  );
+
   return (
     <section className="panel-shell panel-enter flex min-h-[320px] flex-col p-4 sm:p-5">
       <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
@@ -30,18 +36,83 @@ export default function Transcript({
         </div>
 
         {featuredAttack ? (
-          <div className="metric-card rounded-[1.25rem] px-4 py-3 text-right">
+          <div className="metric-card min-w-[220px] rounded-[1.35rem] px-4 py-4 text-right">
             <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">
-              Featured
+              Stage focus
             </p>
             <p className="mt-1 text-sm font-semibold text-white">
               {featuredAttack.persona}
+            </p>
+            <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-300">
+              {featuredAttack.verdict?.exploited
+                ? "Leak visible on screen"
+                : "Queue primed for evidence"}
             </p>
           </div>
         ) : null}
       </div>
 
-      <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1">
+      {featuredAttack ? (
+        <div className="mt-4 grid gap-3 xl:grid-cols-[1.12fr_0.88fr]">
+          <div
+            className={`rounded-[1.6rem] border p-5 ${
+              featuredAttack.verdict?.exploited
+                ? "danger-card"
+                : featuredAttack.verdict
+                  ? "success-card"
+                  : "metric-card border-white/10"
+            }`}
+          >
+            <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-slate-400">
+              Featured attack
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-2xl font-semibold tracking-[-0.05em] text-white">
+                {featuredAttack.persona}
+              </h3>
+              <span className="rounded-full border border-white/12 bg-black/18 px-3 py-1 text-xs font-mono uppercase tracking-[0.18em] text-slate-200">
+                {featuredAttack.attack_class.replaceAll("_", " ")}
+              </span>
+            </div>
+            <p
+              className={`editorial-copy mt-4 text-lg leading-9 text-slate-100 ${
+                featuredAttack.verdict?.exploited ? "danger-strike" : ""
+              }`}
+            >
+              {featuredAttack.text}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+            <div className="metric-card rounded-[1.35rem] p-4">
+              <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-slate-400">
+                Exploits on screen
+              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-rose-50">
+                {exploitedCount}
+              </p>
+            </div>
+            <div className="metric-card rounded-[1.35rem] p-4">
+              <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-slate-400">
+                Research cards
+              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-cyan-50">
+                {citationCount}
+              </p>
+            </div>
+            <div className="metric-card rounded-[1.35rem] p-4">
+              <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-slate-400">
+                Evidence state
+              </p>
+              <p className="mt-3 text-lg font-semibold text-white">
+                {featuredAttack.verdict?.evidence ? "Pinned" : "Awaiting evaluator"}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1 soft-scroll">
         {[...attacks].reverse().map((attack) => {
           const isExploited = attack.verdict?.exploited;
 
@@ -88,38 +159,51 @@ export default function Transcript({
                 </div>
               </div>
 
-              <p
-                className={`mt-4 text-base leading-8 text-slate-100 ${
-                  isExploited ? "danger-strike" : ""
+              <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-black/20 p-4">
+                <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-slate-400">
+                  Attack script
+                </p>
+                <p
+                  className={`editorial-copy mt-3 text-base leading-8 text-slate-100 ${
+                    isExploited ? "danger-strike" : ""
+                  }`}
+                >
+                  {attack.text}
+                </p>
+              </div>
+
+              <div
+                className={`mt-4 grid gap-3 ${
+                  attack.audio_url && attack.verdict?.evidence
+                    ? "lg:grid-cols-2"
+                    : "grid-cols-1"
                 }`}
               >
-                {attack.text}
-              </p>
-
-              {attack.audio_url ? (
-                <div className="mt-4 rounded-[1.1rem] border border-cyan-300/14 bg-cyan-300/6 p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-white">Audio evidence</p>
-                    <span className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-cyan-100">
-                      speaker ready
-                    </span>
+                {attack.audio_url ? (
+                  <div className="rounded-[1.1rem] border border-cyan-300/14 bg-cyan-300/6 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-white">Audio evidence</p>
+                      <span className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-cyan-100">
+                        speaker ready
+                      </span>
+                    </div>
+                    <audio controls preload="none" src={attack.audio_url}>
+                      <track kind="captions" />
+                    </audio>
                   </div>
-                  <audio controls preload="none" src={attack.audio_url}>
-                    <track kind="captions" />
-                  </audio>
-                </div>
-              ) : null}
+                ) : null}
 
-              {attack.verdict?.evidence ? (
-                <div className="mt-4 rounded-[1.1rem] border border-white/10 bg-black/18 p-4">
-                  <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">
-                    Evaluator evidence
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-slate-200">
-                    {attack.verdict.evidence}
-                  </p>
-                </div>
-              ) : null}
+                {attack.verdict?.evidence ? (
+                  <div className="rounded-[1.1rem] border border-white/10 bg-black/18 p-4">
+                    <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">
+                      Evaluator evidence
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-slate-200">
+                      {attack.verdict.evidence}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
 
               {attack.citations.length > 0 ? (
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -140,7 +224,12 @@ export default function Transcript({
                       <p className="mt-2 text-sm leading-6 text-slate-300">
                         {citation.note}
                       </p>
-                      <p className="mt-3 text-xs text-slate-400">{citation.source}</p>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-xs text-slate-400">{citation.source}</p>
+                        <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-cyan-100">
+                          view source
+                        </p>
+                      </div>
                     </a>
                   ))}
                 </div>

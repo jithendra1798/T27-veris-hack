@@ -9,6 +9,8 @@
   --muted: #8ba0ba;
   --accent: #35d5a6;
   --accent-soft: rgba(53, 213, 166, 0.16);
+  --accent-cold: #7baeff;
+  --accent-cold-soft: rgba(123, 174, 255, 0.16);
   --danger: #ff5c74;
   --danger-soft: rgba(255, 92, 116, 0.18);
   --warning: #ffb451;
@@ -29,6 +31,7 @@ html {
   background:
     radial-gradient(circle at top left, rgba(53, 213, 166, 0.12), transparent 32%),
     radial-gradient(circle at 85% 15%, rgba(70, 126, 255, 0.14), transparent 25%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 26%),
     linear-gradient(180deg, #09111f 0%, #050c17 54%, #050910 100%);
 }
 
@@ -37,6 +40,7 @@ body {
   background: transparent;
   color: var(--foreground);
   font-family: var(--font-space-grotesk), sans-serif;
+  overflow-x: hidden;
 }
 
 ::selection {
@@ -54,6 +58,7 @@ body {
     var(--panel);
   box-shadow: var(--shadow), var(--glow);
   backdrop-filter: blur(24px);
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
 }
 
 .panel-shell::before {
@@ -66,11 +71,91 @@ body {
     radial-gradient(circle at top right, rgba(53, 213, 166, 0.08), transparent 35%);
 }
 
+.panel-shell::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 .metric-card {
+  position: relative;
+  overflow: hidden;
   border: 1px solid rgba(203, 219, 234, 0.12);
   border-radius: 1.25rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(6, 15, 27, 0.62));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), transparent 38%);
+}
+
+.metric-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(203, 219, 234, 0.18);
+}
+
+.hero-panel {
+  background:
+    radial-gradient(circle at top left, rgba(123, 174, 255, 0.14), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(53, 213, 166, 0.16), transparent 32%),
+    linear-gradient(180deg, rgba(15, 28, 50, 0.92), rgba(7, 15, 27, 0.92));
+}
+
+.control-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    radial-gradient(circle at top right, rgba(123, 174, 255, 0.12), transparent 34%),
+    rgba(7, 16, 31, 0.84);
+}
+
+.header-stat {
+  border: 1px solid rgba(203, 219, 234, 0.12);
+  border-radius: 1.3rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(6, 15, 27, 0.56));
+  padding: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.moment-tile {
+  border: 1px solid rgba(203, 219, 234, 0.1);
+  border-radius: 1.15rem;
+  background: rgba(4, 10, 18, 0.28);
+  padding: 0.85rem 0.95rem;
+}
+
+.signal-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(8, 17, 31, 0.76);
+}
+
+.score-meter {
+  position: relative;
+  overflow: hidden;
+}
+
+.score-meter::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0)
+  );
+  transform: translateX(-100%);
+  animation: shimmer 2.8s linear infinite;
 }
 
 .capsule {
@@ -92,11 +177,39 @@ body {
   border-radius: 999px;
 }
 
+.status-beacon {
+  animation: beacon-pulse 2s ease-in-out infinite;
+}
+
 .bg-grid {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 48px 48px;
+}
+
+.editorial-copy {
+  text-wrap: balance;
+}
+
+.soft-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 160, 186, 0.45) transparent;
+}
+
+.soft-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.soft-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.soft-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(139, 160, 186, 0.4);
+  background-clip: padding-box;
 }
 
 .danger-strike {
@@ -113,7 +226,12 @@ body {
   top: 52%;
   height: 0.22rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 92, 116, 0.2), var(--danger), rgba(255, 92, 116, 0.2));
+  background: linear-gradient(
+    90deg,
+    rgba(255, 92, 116, 0.2),
+    var(--danger),
+    rgba(255, 92, 116, 0.2)
+  );
   transform-origin: left center;
   transform: scaleX(0);
   animation: strike-sweep 800ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
@@ -184,6 +302,29 @@ audio {
   50% {
     transform: scale(1.02);
     box-shadow: 0 0 0 10px rgba(53, 213, 166, 0.08);
+  }
+}
+
+@keyframes beacon-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 rgba(53, 213, 166, 0);
+  }
+
+  55% {
+    opacity: 0.9;
+    box-shadow: 0 0 0 10px rgba(53, 213, 166, 0.08);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
   }
 }
 

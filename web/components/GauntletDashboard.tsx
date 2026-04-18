@@ -164,35 +164,156 @@ export default function GauntletDashboard({
     [...snapshot.attacks].reverse().find((attack) => attack.verdict?.exploited) ??
     snapshot.attacks.at(-1) ??
     null;
+  const score = snapshot.currentReport?.score ?? 0;
+  const vulnerabilities =
+    snapshot.currentReport?.vulnerabilities ?? snapshot.exploitedCount;
+  const headerStats = [
+    {
+      detail: vulnerabilities > 1 ? "pressure is visible" : "tightened posture",
+      label: "Risk score",
+      tone:
+        score >= 6
+          ? "text-rose-50"
+          : score >= 3
+            ? "text-amber-50"
+            : "text-emerald-50",
+      value: score.toFixed(1),
+    },
+    {
+      detail: snapshot.pendingCount > 0 ? "still evaluating" : "all routed",
+      label: "Attack volume",
+      tone: "text-cyan-50",
+      value: String(snapshot.attacks.length).padStart(2, "0"),
+    },
+    {
+      detail: targetMode === "camel" ? "trusted boundary on" : "ready to flip",
+      label: "Target mode",
+      tone: targetMode === "camel" ? "text-emerald-50" : "text-rose-50",
+      value: targetMode === "camel" ? "CaMeL" : "Hot",
+    },
+  ];
+  const demoMoments = [
+    {
+      detail: "Transcript and speakers come alive",
+      time: "T+0:18",
+      title: "Audio attack",
+    },
+    {
+      detail:
+        featuredAttack?.verdict?.exploited
+          ? featuredAttack.attack_class.replaceAll("_", " ")
+          : "Awaiting the first leak",
+      time: "T+0:45",
+      title: "Red strike",
+    },
+    {
+      detail: "One-click re-run and score collapse",
+      time: "T+1:15",
+      title: "CaMeL flip",
+    },
+  ];
 
   return (
     <div className="bg-grid min-h-screen">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
-        <header className="panel-shell panel-enter flex flex-col gap-5 p-5 lg:flex-row lg:items-end lg:justify-between lg:p-6">
-          <div className="max-w-3xl space-y-3">
-            <p className="capsule w-fit bg-white/5 text-white/72">
-              <span className="capsule-dot bg-[var(--accent)]" />
-              Voice agent red-team control room
-            </p>
-            <div className="space-y-2">
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
-                GAUNTLET shows the jailbreak, then shows the fix.
-              </h1>
-              <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                The dashboard is set up around the demo moments in{" "}
-                <span className="font-mono text-slate-100">roles/fe-dashboard.md</span>:
-                attack feed on the left, transcript and evidence in the middle,
-                and the score swing plus CaMeL control on the right.
+      <div className="mx-auto flex min-h-screen w-full max-w-[1680px] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+        <header className="panel-shell hero-panel panel-enter grid gap-5 p-5 lg:grid-cols-[1.2fr_0.92fr] lg:p-6 xl:p-7">
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-2">
+              <p className="capsule w-fit bg-white/5 text-white/72">
+                <span className="capsule-dot bg-[var(--accent)] status-beacon" />
+                Voice agent red-team control room
               </p>
+              <p className="capsule w-fit border-cyan-300/20 bg-cyan-300/10 text-cyan-50">
+                <span className="capsule-dot bg-[var(--accent-cold)]" />
+                Judges see the break, then the fix
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <p className="font-mono text-[0.72rem] uppercase tracking-[0.24em] text-slate-300">
+                Veris scenarios, Baseten chains, VoiceRun theater, You.com research
+              </p>
+              <h1 className="editorial-copy max-w-4xl text-4xl font-semibold tracking-[-0.06em] text-white sm:text-5xl xl:text-[3.7rem]">
+                GAUNTLET turns a voice-agent exploit into a stage moment, then
+                hardens it live.
+              </h1>
+              <p className="editorial-copy max-w-3xl text-sm leading-7 text-slate-200/88 sm:text-base">
+                The layout leans into the hackathon script: attack feed on the left,
+                transcript and evidence in the middle, and a control-tower risk panel
+                on the right with the CaMeL flip as the headline action.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {headerStats.map((stat) => (
+                <div className="header-stat" key={stat.label}>
+                  <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-slate-400">
+                    {stat.label}
+                  </p>
+                  <p
+                    className={`mt-3 text-3xl font-semibold tracking-[-0.05em] ${stat.tone}`}
+                  >
+                    {stat.value}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-300">{stat.detail}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="metric-card rounded-[1.6rem] p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-slate-400">
+                    Demo memory hooks
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    Three beats we want judges repeating after the room clears
+                  </p>
+                </div>
+                <span className="rounded-full border border-white/12 bg-black/18 px-3 py-1 text-xs font-mono uppercase tracking-[0.18em] text-slate-200">
+                  {featuredAttack ? featuredAttack.persona : "Queue warming"}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {demoMoments.map((moment) => (
+                  <div className="moment-tile" key={moment.time}>
+                    <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-cyan-100">
+                      {moment.time}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {moment.title}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      {moment.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
+          <div className="panel-shell control-panel rounded-[1.8rem] p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-slate-400">
+                  Demo controls
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-white">
+                  Rehearse the room while the backend wakes up
+                </h2>
+              </div>
+              <div className="capsule border-emerald-300/22 bg-emerald-300/10 text-emerald-50">
+                <span className="capsule-dot bg-emerald-300 status-beacon" />
+                {streamMode === "demo" ? "Rehearsal" : "Live pipe"}
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-2 sm:grid-cols-3">
               <button
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                className={`rounded-[1.1rem] border px-4 py-3 text-sm font-medium transition ${
                   streamMode === "demo"
-                    ? "border-emerald-300/40 bg-emerald-300/12 text-emerald-50"
+                    ? "border-emerald-300/40 bg-emerald-300/14 text-emerald-50"
                     : "border-white/12 bg-white/4 text-slate-300 hover:border-white/22 hover:text-white"
                 }`}
                 onClick={startDemoRun}
@@ -201,9 +322,9 @@ export default function GauntletDashboard({
                 Demo tape
               </button>
               <button
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                className={`rounded-[1.1rem] border px-4 py-3 text-sm font-medium transition ${
                   streamMode === "live"
-                    ? "border-cyan-300/40 bg-cyan-300/12 text-cyan-50"
+                    ? "border-cyan-300/40 bg-cyan-300/14 text-cyan-50"
                     : "border-white/12 bg-white/4 text-slate-300 hover:border-white/22 hover:text-white"
                 }`}
                 onClick={startLiveRun}
@@ -212,18 +333,69 @@ export default function GauntletDashboard({
                 Live SSE
               </button>
               <button
-                className="rounded-full border border-white/12 bg-white/4 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-white/24 hover:bg-white/8"
+                className="rounded-[1.1rem] border border-white/12 bg-white/4 px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-white/24 hover:bg-white/8"
                 onClick={startDemoRun}
                 type="button"
               >
                 Replay intro
               </button>
             </div>
-            <p className="max-w-md text-sm leading-6 text-slate-300">{modeMessage}</p>
+
+            <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-black/22 p-4">
+              <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">
+                Operator notes
+              </p>
+              <p className="mt-2 text-sm leading-7 text-slate-200">{modeMessage}</p>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="metric-card rounded-[1.35rem] p-4">
+                <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">
+                  Stream source
+                </p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {streamMode === "demo" ? "Local demo tape" : "BE1 event stream"}
+                </p>
+                <p className="mt-2 text-sm text-slate-300">
+                  {streamMode === "demo" ? "Stable for rehearsal" : liveStream.status}
+                </p>
+              </div>
+
+              <div className="metric-card rounded-[1.35rem] p-4">
+                <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">
+                  Focus target
+                </p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {targetMode === "camel" ? "CaMeL hardened" : "Vulnerable path"}
+                </p>
+                <p className="mt-2 text-sm text-slate-300">
+                  {targetMode === "camel"
+                    ? "Trusted boundary is active"
+                    : "Waiting for the one-click flip"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {demoMoments.map((moment) => (
+                <div
+                  className="flex items-center justify-between rounded-[1rem] border border-white/8 bg-white/4 px-4 py-3"
+                  key={`queue-${moment.time}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">{moment.title}</p>
+                    <p className="text-sm text-slate-300">{moment.detail}</p>
+                  </div>
+                  <p className="font-mono text-[0.72rem] uppercase tracking-[0.2em] text-cyan-100">
+                    {moment.time}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </header>
 
-        <main className="grid flex-1 gap-4 xl:grid-cols-[0.95fr_1.35fr_0.9fr]">
+        <main className="grid flex-1 gap-4 xl:grid-cols-[0.98fr_1.38fr_0.92fr]">
           <AttackFeed
             attacks={snapshot.attacks}
             streamMode={streamMode}
