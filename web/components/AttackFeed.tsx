@@ -2,11 +2,6 @@ import type { DashboardAttack } from "@/lib/events";
 
 type AttackFeedProps = {
   attacks: DashboardAttack[];
-  containedCount: number;
-  exploitedCount: number;
-  pendingCount: number;
-  streamMode: "demo" | "live";
-  streamStatus: "connecting" | "demo" | "error" | "idle" | "live";
 };
 
 const statusTone = {
@@ -25,13 +20,7 @@ function getAttackState(attack: DashboardAttack) {
 
 export default function AttackFeed({
   attacks,
-  containedCount,
-  exploitedCount,
-  pendingCount,
-  streamMode,
-  streamStatus,
 }: AttackFeedProps) {
-
   return (
     <section className="panel-shell panel-enter flex min-h-[320px] flex-col p-4 sm:p-5">
       <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
@@ -40,45 +29,11 @@ export default function AttackFeed({
             Attack feed
           </p>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
-            Personas and attacks
+            Active roster
           </h2>
         </div>
 
-        <div className="capsule bg-white/4 text-slate-200">
-          <span
-            className={`capsule-dot ${
-              streamStatus === "live"
-                ? "bg-emerald-300"
-                : streamStatus === "connecting"
-                  ? "bg-amber-300"
-                  : streamStatus === "error"
-                    ? "bg-rose-300"
-                    : "bg-cyan-300"
-            }`}
-          />
-          {streamMode === "demo" ? "Demo" : streamStatus}
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="signal-card rounded-[1rem] border border-rose-300/12 px-3 py-3">
-          <p className="font-mono text-[0.66rem] uppercase tracking-[0.18em] text-slate-400">
-            Landed
-          </p>
-          <p className="mt-2 text-xl font-semibold text-rose-50">{exploitedCount}</p>
-        </div>
-        <div className="signal-card rounded-[1rem] border border-emerald-300/12 px-3 py-3">
-          <p className="font-mono text-[0.66rem] uppercase tracking-[0.18em] text-slate-400">
-            Held
-          </p>
-          <p className="mt-2 text-xl font-semibold text-emerald-50">{containedCount}</p>
-        </div>
-        <div className="signal-card rounded-[1rem] border border-amber-300/12 px-3 py-3">
-          <p className="font-mono text-[0.66rem] uppercase tracking-[0.18em] text-slate-400">
-            Queue
-          </p>
-          <p className="mt-2 text-xl font-semibold text-amber-50">{pendingCount}</p>
-        </div>
+        <div className="capsule bg-white/4 text-slate-200">{attacks.length} queued</div>
       </div>
 
       <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1 soft-scroll">
@@ -141,15 +96,11 @@ export default function AttackFeed({
                         Speaker armed
                       </span>
                     ) : null}
-                  </div>
-
-                  <div className="mt-4 rounded-[1.1rem] border border-white/8 bg-black/18 p-3">
-                    <p className="font-mono text-[0.66rem] uppercase tracking-[0.2em] text-slate-400">
-                      Prompt payload
-                    </p>
-                    <p className="mt-2 line-clamp-4 text-sm leading-6 text-slate-200">
-                      {attack.text}
-                    </p>
+                    {attack.verdict?.evidence ? (
+                      <span className="rounded-full bg-white/8 px-2.5 py-1 text-xs font-mono uppercase tracking-[0.18em] text-slate-200">
+                        Evidence ready
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -159,8 +110,7 @@ export default function AttackFeed({
 
         {attacks.length === 0 ? (
           <div className="metric-card flex h-full min-h-[220px] items-center justify-center rounded-[1.5rem] border border-dashed border-white/12 p-6 text-center text-sm leading-7 text-slate-300">
-            Waiting for the first persona stream. Use Demo tape to rehearse the visual
-            flow before BE1 starts emitting SSE.
+            Choose an attack to populate the feed.
           </div>
         ) : null}
       </div>

@@ -39,15 +39,13 @@ export function useSSE(url: string, enabled: boolean) {
         });
       } catch {
         setStatus("error");
-        setError("SSE payload could not be parsed with the current contract.");
+        setError("Live event stream returned an unsupported payload.");
       }
     };
 
     stream.onerror = () => {
       setStatus("error");
-      setError(
-        `Could not connect to ${url}. Switch to Demo tape while BE1's stream comes online.`,
-      );
+      setError("Live event stream unavailable.");
     };
 
     return () => {
