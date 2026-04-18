@@ -145,7 +145,8 @@ def get_scenarios_for_class(attack_class: str | None = None) -> list[dict]:
 # ---------------------------------------------------------------------------
 async def fire_attack(
     scenario: dict,
-    be2_attacker_url: str = "http://localhost:8001/attacker/attack",
+    be2_target_url: str = "http://localhost:8001/internal/target/respond",
+    run_id: str | None = None,
 ) -> dict:
     """
     Generate attack text via DeepSeek, emit SSE event, POST to BE2 attacker.
@@ -183,24 +184,34 @@ async def fire_attack(
         "text": attack_text,
         "attack_class": scenario["class"],
         "audio_url": None,  # BE2 will produce audio
+        "run_id": run_id,
     }
+
+    # Store attack for evaluator correlation BEFORE posting to BE2
+    # (BE2 may respond before this function returns)
+    from .evaluator import store_attack
+    store_attack(attack_event["id"], attack_event)
 
     # Emit to SSE bus
     await event_bus.emit(attack_event)
 
-    # POST attack to BE2's attacker handler
+    # POST attack text to BE2's target endpoint
+    # BE2 will generate a response and auto-POST back to /evaluator/response
     try:
         async with httpx.AsyncClient(timeout=30.0) as http:
             await http.post(
-                be2_attacker_url,
+                be2_target_url,
                 json={
-                    "id": scenario["id"],
                     "text": attack_text,
-                    "persona": scenario["persona"],
-                    "attack_class": scenario["class"],
+                    "attack_id": scenario["id"],
+                    "metadata": {
+                        "persona": scenario["persona"],
+                        "attack_class": scenario["class"],
+                        "run_id": run_id,
+                    },
                 },
             )
-    except httpx.HTTPError as exc:
+    except Exception as exc:
         # Log but don't crash — the SSE event is already emitted
         print(f"[attacker] Warning: failed to POST to BE2: {exc}")
 
@@ -212,8 +223,9 @@ async def fire_attack(
 # ---------------------------------------------------------------------------
 async def run_attack_suite(
     attack_class: str | None = None,
-    be2_attacker_url: str = "http://localhost:8001/attacker/attack",
+    be2_target_url: str = "http://localhost:8001/internal/target/respond",
     max_attacks: int = 10,
+    run_id: str | None = None,
 ) -> list[dict]:
     """
     Fire all matching scenarios sequentially (serialized for demo reliability).
@@ -224,13 +236,13 @@ async def run_attack_suite(
     results = []
     for scenario in scenarios:
         try:
-            event = await fire_attack(scenario, be2_attacker_url)
+            event = await fire_attack(scenario, be2_target_url, run_id=run_id)
             results.append(event)
         except Exception as exc:
             # Retry once
             print(f"[attacker] Attack failed, retrying: {exc}")
             try:
-                event = await fire_attack(scenario, be2_attacker_url)
+                event = await fire_attack(scenario, be2_target_url, run_id=run_id)
                 results.append(event)
             except Exception as retry_exc:
                 print(f"[attacker] Retry also failed: {retry_exc}")

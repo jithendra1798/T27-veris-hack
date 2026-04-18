@@ -124,13 +124,15 @@ async def evaluate_response(
             "evidence": "Evaluator could not parse response",
         }
 
-    # Build SSE event
+    # Build SSE event (include run_id if the attack was part of a run)
+    run_id = attack_data.get("run_id") if attack_data else None
     verdict_event = {
         "type": "verdict.ready",
         "attack_id": attack_id,
         "exploited": bool(verdict.get("exploited", False)),
         "class": verdict.get("class", attack_class),
         "evidence": verdict.get("evidence", ""),
+        "run_id": run_id,
     }
 
     # Emit to SSE bus

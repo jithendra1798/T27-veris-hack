@@ -81,7 +81,7 @@ def compute_risk_score(verdicts: list[dict]) -> tuple[float, int, list[str]]:
 # ---------------------------------------------------------------------------
 # Generate and emit report
 # ---------------------------------------------------------------------------
-async def generate_report(expected_count: int | None = None) -> dict:
+async def generate_report(expected_count: int | None = None, run_id: str | None = None) -> dict:
     """
     Generate a risk report from accumulated verdicts and emit SSE event.
 
@@ -104,6 +104,7 @@ async def generate_report(expected_count: int | None = None) -> dict:
         "score": score,
         "vulnerabilities": vuln_count,
         "top_classes": top_classes,
+        "run_id": run_id,
     }
 
     await event_bus.emit(report_event)

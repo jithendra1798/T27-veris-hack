@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from .attacker import fire_attack, get_scenarios_for_class, load_scenarios, reload_scenarios
-from .evaluator import evaluate_response, store_attack
+from .evaluator import evaluate_response
 from .events import event_bus
 from .reporter import add_verdict, generate_report, reset_verdicts
 
@@ -34,7 +34,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-BE2_ATTACKER_URL = os.getenv("BE2_ATTACKER_URL", "http://localhost:8001/attacker/attack")
+BE2_TARGET_URL = os.getenv("BE2_TARGET_URL", os.getenv("TARGET_RESPONSE_URL", "http://localhost:8001/internal/target/respond"))
 BE2_TARGET_MODE_URL = os.getenv("BE2_TARGET_MODE_URL", "http://localhost:8001/target/mode")
 
 
@@ -118,19 +118,26 @@ async def run_attacks(req: AttackRunRequest):
         results = []
         for scenario in scenarios:
             try:
-                event = await fire_attack(scenario, BE2_ATTACKER_URL)
-                # Store attack for evaluator correlation
-                store_attack(event["id"], event)
+                event = await fire_attack(scenario, BE2_TARGET_URL, run_id=run_id)
                 results.append(event)
             except Exception as exc:
                 print(f"[orchestrator] Attack failed: {exc}")
                 # Retry once
                 try:
-                    event = await fire_attack(scenario, BE2_ATTACKER_URL)
-                    store_attack(event["id"], event)
+                    event = await fire_attack(scenario, BE2_TARGET_URL, run_id=run_id)
                     results.append(event)
                 except Exception as retry_exc:
                     print(f"[orchestrator] Retry failed: {retry_exc}")
+        # Wait for all verdicts to arrive from BE2 before completing the run
+        expected = len(results)
+        from .reporter import get_verdicts
+        for _ in range(60):  # wait up to 30s (60 × 0.5s)
+            if len(get_verdicts()) >= expected:
+                break
+            await asyncio.sleep(0.5)
+        # Auto-generate report once all verdicts are in
+        if len(get_verdicts()) >= expected and expected > 0:
+            await generate_report(run_id=run_id)
         await event_bus.emit({
             "type": "run.complete",
             "run_id": run_id,
@@ -167,8 +174,7 @@ async def run_single_attack(req: SingleAttackRequest):
 
     async def _fire():
         try:
-            event = await fire_attack(scenario, BE2_ATTACKER_URL)
-            store_attack(event["id"], event)
+            event = await fire_attack(scenario, BE2_TARGET_URL)
         except Exception as exc:
             print(f"[orchestrator] Single attack failed: {exc}")
 
@@ -198,18 +204,9 @@ async def receive_target_response(req: EvaluatorResponseRequest):
                 response_text=req.response_text,
                 audio_url=req.audio_url,
             )
-            # Add to reporter accumulator
+            # Add to reporter accumulator — report generation is handled
+            # by the _run() loop which waits for all verdicts to arrive
             add_verdict(verdict)
-
-            # Check if we should generate a report
-            # (auto-generate after receiving enough verdicts)
-            from .reporter import get_verdicts
-            verdicts = get_verdicts()
-            total_attacks = len(event_bus.history)
-            attack_count = sum(1 for e in event_bus.history if e.get("type") == "attack.fired")
-
-            if len(verdicts) >= attack_count and attack_count > 0:
-                await generate_report()
 
         except Exception as exc:
             print(f"[orchestrator] Evaluation failed for {req.attack_id}: {exc}")
