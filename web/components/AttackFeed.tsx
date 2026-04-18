@@ -2,6 +2,9 @@ import type { DashboardAttack } from "@/lib/events";
 
 type AttackFeedProps = {
   attacks: DashboardAttack[];
+  containedCount: number;
+  exploitedCount: number;
+  pendingCount: number;
   streamMode: "demo" | "live";
   streamStatus: "connecting" | "demo" | "error" | "idle" | "live";
 };
@@ -22,14 +25,12 @@ function getAttackState(attack: DashboardAttack) {
 
 export default function AttackFeed({
   attacks,
+  containedCount,
+  exploitedCount,
+  pendingCount,
   streamMode,
   streamStatus,
 }: AttackFeedProps) {
-  const exploitedCount = attacks.filter((attack) => attack.verdict?.exploited).length;
-  const containedCount = attacks.filter(
-    (attack) => attack.verdict && !attack.verdict.exploited,
-  ).length;
-  const pendingCount = attacks.filter((attack) => !attack.verdict).length;
 
   return (
     <section className="panel-shell panel-enter flex min-h-[320px] flex-col p-4 sm:p-5">

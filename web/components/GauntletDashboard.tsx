@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AttackFeed from "@/components/AttackFeed";
 import RiskReport from "@/components/RiskReport";
 import SponsorFooter from "@/components/SponsorFooter";
@@ -50,15 +50,15 @@ export default function GauntletDashboard({
   const events = streamMode === "demo" ? demoEvents : liveStream.events;
   const snapshot = buildDashboardSnapshot(events, citationLookup);
 
-  const clearDemoTimers = () => {
+  const clearDemoTimers = useCallback(() => {
     for (const timer of demoTimersRef.current) {
       window.clearTimeout(timer);
     }
 
     demoTimersRef.current = [];
-  };
+  }, []);
 
-  const queueSequence = (sequence: TimedEvent[]) => {
+  const queueSequence = useCallback((sequence: TimedEvent[]) => {
     for (const item of sequence) {
       const timer = window.setTimeout(() => {
         setDemoEvents((current) => [...current, item.event]);
@@ -66,7 +66,7 @@ export default function GauntletDashboard({
 
       demoTimersRef.current.push(timer);
     }
-  };
+  }, []);
 
   const startDemoRun = () => {
     clearDemoTimers();
@@ -91,7 +91,7 @@ export default function GauntletDashboard({
     return () => {
       clearDemoTimers();
     };
-  }, []);
+  }, [queueSequence, clearDemoTimers]);
 
   useEffect(() => {
     return () => {
@@ -101,7 +101,7 @@ export default function GauntletDashboard({
         window.clearTimeout(flashTimerRef.current);
       }
     };
-  }, []);
+  }, [clearDemoTimers]);
 
   const handleApplyCaMeL = async () => {
     if (isApplyingCaMeL) {
@@ -398,6 +398,9 @@ export default function GauntletDashboard({
         <main className="grid flex-1 gap-4 xl:grid-cols-[0.98fr_1.38fr_0.92fr]">
           <AttackFeed
             attacks={snapshot.attacks}
+            containedCount={snapshot.containedCount}
+            exploitedCount={snapshot.exploitedCount}
+            pendingCount={snapshot.pendingCount}
             streamMode={streamMode}
             streamStatus={streamMode === "demo" ? "demo" : liveStream.status}
           />

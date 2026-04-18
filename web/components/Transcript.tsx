@@ -187,9 +187,7 @@ export default function Transcript({
                         speaker ready
                       </span>
                     </div>
-                    <audio controls preload="none" src={attack.audio_url}>
-                      <track kind="captions" />
-                    </audio>
+                    <audio controls preload="none" src={attack.audio_url} />
                   </div>
                 ) : null}
 

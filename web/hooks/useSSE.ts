@@ -23,6 +23,7 @@ export function useSSE(url: string, enabled: boolean) {
 
     stream.onopen = () => {
       setStatus("live");
+      setError(null);
     };
 
     stream.onmessage = (message) => {
@@ -47,12 +48,14 @@ export function useSSE(url: string, enabled: boolean) {
       setError(
         `Could not connect to ${url}. Switch to Demo tape while BE1's stream comes online.`,
       );
-      stream.close();
     };
 
     return () => {
       window.clearTimeout(markConnecting);
       stream.close();
+      setEvents([]);
+      setError(null);
+      setStatus("idle");
     };
   }, [enabled, url]);
 
