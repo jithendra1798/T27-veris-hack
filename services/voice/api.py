@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from services.voice.models import ModeRequest, TargetRequest, TargetResponse, TtsRenderRequest, TtsRenderResponse
@@ -10,6 +11,16 @@ from services.voice.tts import OrpheusTTSClient
 
 
 app = FastAPI(title="GAUNTLET Voice Service", version="0.1.0")
+
+# CORS: allow FE dashboard (Vercel or localhost) to call /target/mode
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.mount("/assets", StaticFiles(directory=settings.audio_dir.parent), name="assets")
 
 

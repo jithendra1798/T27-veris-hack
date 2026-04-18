@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import AudioWaveform from "@/components/AudioWaveform";
+import SpeakButton from "@/components/SpeakButton";
 import type { DashboardAttack } from "@/lib/events";
 
 type TranscriptProps = {
@@ -157,7 +158,7 @@ export default function Transcript({
 
         <div
           className={`mt-5 grid gap-3 ${
-            attack.audio_url && attack.verdict?.evidence
+            (attack.audio_url || attack.text) && attack.verdict?.evidence
               ? "lg:grid-cols-[1.05fr_1fr]"
               : "grid-cols-1"
           }`}
@@ -167,6 +168,12 @@ export default function Transcript({
               src={attack.audio_url}
               tone={isExploited ? "red" : "green"}
               label={isExploited ? "Audio evidence — exploit" : "Audio evidence — rerun"}
+            />
+          ) : attack.text ? (
+            <SpeakButton
+              text={attack.text}
+              tone={isExploited ? "red" : "green"}
+              label={isExploited ? "Play attack audio" : "Play rerun audio"}
             />
           ) : null}
 
