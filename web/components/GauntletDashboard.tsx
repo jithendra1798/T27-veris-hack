@@ -290,7 +290,7 @@ export default function GauntletDashboard({
   return (
     <div className="bg-grid min-h-screen">
       <div className="mx-auto flex min-h-screen w-full max-w-[1680px] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <header className="panel-enter flex flex-col gap-5">
+        <header className="masthead-plate panel-enter flex flex-col gap-5">
           {/* Masthead — newspaper-style: wordmark left, edition right, rule below */}
           <div className="flex items-end justify-between gap-4 pb-4">
             <div className="flex items-center gap-4">
