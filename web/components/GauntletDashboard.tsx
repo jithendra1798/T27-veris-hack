@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import AttackFeed from "@/components/AttackFeed";
 import AttackPicker from "@/components/AttackPicker";
+import GauntletMark from "@/components/GauntletMark";
 import RiskReport from "@/components/RiskReport";
 import SponsorFooter from "@/components/SponsorFooter";
 import Transcript from "@/components/Transcript";
@@ -50,8 +50,7 @@ export default function GauntletDashboard({
     null,
   );
   const [isApplyingCaMeL, setIsApplyingCaMeL] = useState(false);
-  const [showCaMeLFlash, setShowCaMeLFlash] = useState(false);
-  const [showCamelImage, setShowCamelImage] = useState(true);
+  const [fixMomentActive, setFixMomentActive] = useState(false);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const demoTimersRef = useRef<number[]>([]);
   const flashTimerRef = useRef<number | null>(null);
@@ -59,6 +58,13 @@ export default function GauntletDashboard({
   const liveStream = useSSE(sseUrl, streamMode === "live");
   const events = streamMode === "demo" ? demoEvents : liveStream.events;
   const snapshot = buildDashboardSnapshot(events, citationLookup);
+
+  const edition = new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
 
   function clearDemoTimers() {
     for (const timer of demoTimersRef.current) {
@@ -95,8 +101,7 @@ export default function GauntletDashboard({
   function handleStartAttack(kind: AttackKind) {
     clearDemoTimers();
     clearFlashTimer();
-    setShowCaMeLFlash(false);
-    setShowCamelImage(true);
+    setFixMomentActive(false);
     setStreamMode("demo");
     setTargetMode("vulnerable");
     setDemoEvents([]);
@@ -110,8 +115,7 @@ export default function GauntletDashboard({
   async function handleStartLiveAttack(kind: AttackKind) {
     clearDemoTimers();
     clearFlashTimer();
-    setShowCaMeLFlash(false);
-    setShowCamelImage(true);
+    setFixMomentActive(false);
     setStreamMode("live");
     setTargetMode("vulnerable");
     setDemoEvents([]);
@@ -134,8 +138,7 @@ export default function GauntletDashboard({
   function handleStartLive() {
     clearDemoTimers();
     clearFlashTimer();
-    setShowCaMeLFlash(false);
-    setShowCamelImage(true);
+    setFixMomentActive(false);
     setStreamMode("live");
     setTargetMode("vulnerable");
     setDemoEvents([]);
@@ -148,8 +151,7 @@ export default function GauntletDashboard({
   function handleReset() {
     clearDemoTimers();
     clearFlashTimer();
-    setShowCaMeLFlash(false);
-    setShowCamelImage(true);
+    setFixMomentActive(false);
     setStreamMode("demo");
     setTargetMode("vulnerable");
     setDemoEvents([]);
@@ -174,14 +176,13 @@ export default function GauntletDashboard({
     setIsApplyingCaMeL(true);
     setComparisonReport(snapshot.currentReport);
     setTargetMode("camel");
-    setShowCaMeLFlash(true);
-    setShowCamelImage(true);
+    setFixMomentActive(true);
     setStatusNotice(null);
     clearFlashTimer();
 
     flashTimerRef.current = window.setTimeout(() => {
-      setShowCaMeLFlash(false);
-    }, 2200);
+      setFixMomentActive(false);
+    }, 1800);
 
     let requestSucceeded = false;
 
@@ -222,6 +223,34 @@ export default function GauntletDashboard({
     setIsApplyingCaMeL(false);
   };
 
+  // --- Keyboard shortcuts: 1/2/3 pick attacks, C apply CaMeL, R reset ---
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+
+      if (event.key === "1" || event.key === "2" || event.key === "3") {
+        const option = attackChoices[Number(event.key) - 1];
+        if (option) {
+          if (streamMode === "live") {
+            handleStartLiveAttack(option.kind);
+          } else {
+            handleStartAttack(option.kind);
+          }
+        }
+      } else if (event.key.toLowerCase() === "c") {
+        handleApplyCaMeL();
+      } else if (event.key.toLowerCase() === "r") {
+        handleReset();
+      }
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamMode, selectedAttackKind, targetMode, snapshot.activeAttackKind]);
+
   const featuredAttack: DashboardAttack | null =
     [...snapshot.attacks].reverse().find((attack) => attack.verdict?.exploited) ??
     snapshot.attacks.at(-1) ??
@@ -235,25 +264,17 @@ export default function GauntletDashboard({
     `${streamMode}-${selectedAttackKind ?? "idle"}-${targetMode}`;
   const reportBaseline = snapshot.previousReport ?? comparisonReport;
   const statusLine = (() => {
-    if (statusNotice) {
-      return statusNotice;
-    }
+    if (statusNotice) return statusNotice;
 
     if (streamMode === "live") {
-      if (liveStream.error) {
-        return liveStream.error;
-      }
-
-      if (liveStream.status === "connecting") {
+      if (liveStream.error) return liveStream.error;
+      if (liveStream.status === "connecting")
         return "Connecting to the live event stream.";
-      }
-
       if (liveStream.status === "live") {
         return attackTitle
-          ? `Live ${attackTitle.toLowerCase()} events are arriving.`
+          ? `Live ${attackTitle.toLowerCase()} events arriving.`
           : "Listening for live attack events.";
       }
-
       return "Switch to live when the runtime is ready.";
     }
 
@@ -261,86 +282,108 @@ export default function GauntletDashboard({
       return "Choose an attack to begin.";
     }
 
-    if (targetMode === "camel") {
-      return "Defense rerun active.";
-    }
-
-    if (attackTitle) {
-      return `Running ${attackTitle.toLowerCase()}.`;
-    }
-
+    if (targetMode === "camel") return "Defense rerun active.";
+    if (attackTitle) return `Running ${attackTitle.toLowerCase()}.`;
     return "Choose an attack to begin.";
   })();
 
   return (
     <div className="bg-grid min-h-screen">
       <div className="mx-auto flex min-h-screen w-full max-w-[1680px] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <header className="panel-shell panel-enter stage-header px-4 py-4 sm:px-5 lg:px-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <p className="capsule w-fit bg-white/5 text-white/72">
-                  <span className="capsule-dot bg-[var(--accent)] status-beacon" />
-                  Veris voice agent gauntlet
-                </p>
-                <h1 className="editorial-copy mt-3 text-3xl font-semibold tracking-[-0.06em] text-white sm:text-4xl lg:text-[3rem]">
-                  Choose the attack, show the exploit, then harden the rerun.
-                </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200/88 sm:text-base">
-                  Three projector-ready panels keep the opening move, the evidence,
-                  and the score swing in view from the first click.
-                </p>
-              </div>
+        <header className="panel-enter flex flex-col gap-5">
+          {/* Masthead — newspaper-style: wordmark left, edition right, rule below */}
+          <div className="flex items-end justify-between gap-4 pb-4">
+            <div className="flex items-center gap-4">
+              <GauntletMark size="md" />
+              <span className="hidden h-6 w-px bg-[color:var(--rule-strong)] sm:inline-block" />
+              <p className="byline hidden sm:block">
+                Voice-agent red team, on the record.
+              </p>
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                <p className="capsule bg-white/4 text-slate-200">
+            <div className="flex flex-col items-end gap-1 text-right">
+              <p className="overline">Dispatch № 01</p>
+              <p className="byline" suppressHydrationWarning>
+                {edition}
+              </p>
+            </div>
+          </div>
+
+          <hr className="rule-double m-0 border-0" />
+
+          {/* Editorial headline block */}
+          <div className="grid gap-6 pt-2 lg:grid-cols-[1.55fr_1fr]">
+            <div>
+              <h1
+                className="display editorial-copy text-[color:var(--paper)]"
+                style={{
+                  fontSize: "clamp(2.25rem, 5vw, 3.75rem)",
+                  lineHeight: 1.02,
+                }}
+              >
+                Choose the attack.<br />
+                <span className="display-italic">Show the exploit.</span><br />
+                Harden the rerun.
+              </h1>
+
+              <p className="mt-5 max-w-xl text-base leading-7 text-[color:var(--paper-dim)] sm:text-lg sm:leading-8">
+                Three columns keep the opening move, the evidence, and the score
+                swing in view from the first click. Pick a scenario, watch it
+                land, then deploy the trusted-boundary fix and rerun live.
+              </p>
+            </div>
+
+            {/* Status byline */}
+            <aside className="flex flex-col gap-3 rounded-xl border border-[color:var(--rule)] bg-[color:var(--ink-2)]/60 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={
+                    streamMode === "live"
+                      ? "capsule capsule-cold"
+                      : "capsule"
+                  }
+                >
                   <span
                     className={`capsule-dot ${
                       streamMode === "live"
                         ? liveStream.status === "live"
-                          ? "bg-emerald-300"
+                          ? "bg-[color:var(--signal-green)]"
                           : liveStream.status === "connecting"
-                            ? "bg-amber-300"
-                            : "bg-rose-300"
-                        : "bg-cyan-300"
+                            ? "bg-[color:var(--signal-amber)]"
+                            : "bg-[color:var(--signal-red)]"
+                        : "bg-[color:var(--paper-dim)]"
                     }`}
                   />
-                  {streamMode === "demo" ? "Demo" : "Live"}
-                </p>
-                <p
-                  className={`capsule ${
+                  {streamMode === "demo" ? "Demo run" : "Live run"}
+                </span>
+                <span
+                  className={
                     targetMode === "camel"
-                      ? "border-emerald-300/24 bg-emerald-300/10 text-emerald-50"
-                      : "border-rose-300/24 bg-rose-300/10 text-rose-50"
-                  }`}
+                      ? "capsule capsule-green"
+                      : "capsule capsule-red"
+                  }
                 >
                   <span
                     className={`capsule-dot ${
-                      targetMode === "camel" ? "bg-emerald-300" : "bg-rose-300"
+                      targetMode === "camel"
+                        ? "bg-[color:var(--signal-green)]"
+                        : "bg-[color:var(--signal-red)]"
                     }`}
                   />
                   {targetMode === "camel" ? "CaMeL active" : "Vulnerable path"}
-                </p>
+                </span>
               </div>
-            </div>
 
-            <AttackPicker
-              activeKind={selectedAttackKind}
-              onSelect={streamMode === "live" ? handleStartLiveAttack : handleStartAttack}
-              options={attackChoices}
-            />
-
-            <div className="operator-strip flex flex-col gap-3 rounded-[1.35rem] border border-white/10 bg-black/18 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="min-h-[1.5rem] text-sm leading-6 text-slate-200">
+              <p className="min-h-[1.5rem] text-sm leading-6 text-[color:var(--paper)]">
                 {statusLine}
               </p>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--rule)] pt-3">
                 <button
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  className={`rounded-full border px-3.5 py-1.5 font-mono text-[0.7rem] uppercase tracking-[0.18em] transition ${
                     streamMode === "demo"
-                      ? "border-emerald-300/40 bg-emerald-300/14 text-emerald-50"
-                      : "border-white/12 bg-white/4 text-slate-300 hover:border-white/22 hover:text-white"
+                      ? "border-[color:var(--gold-line)] bg-[color:var(--gold-soft)] text-[color:#f0d49b]"
+                      : "border-[color:var(--rule-strong)] bg-transparent text-[color:var(--paper-dim)] hover:border-[color:var(--rule-strong)] hover:text-[color:var(--paper)]"
                   }`}
                   onClick={() => setStreamMode("demo")}
                   type="button"
@@ -348,10 +391,10 @@ export default function GauntletDashboard({
                   Demo
                 </button>
                 <button
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  className={`rounded-full border px-3.5 py-1.5 font-mono text-[0.7rem] uppercase tracking-[0.18em] transition ${
                     streamMode === "live"
-                      ? "border-cyan-300/40 bg-cyan-300/14 text-cyan-50"
-                      : "border-white/12 bg-white/4 text-slate-300 hover:border-white/22 hover:text-white"
+                      ? "capsule-cold border-[color:rgba(123,174,255,0.4)] bg-[rgba(123,174,255,0.12)] text-[#d7e4ff]"
+                      : "border-[color:var(--rule-strong)] bg-transparent text-[color:var(--paper-dim)] hover:text-[color:var(--paper)]"
                   }`}
                   onClick={handleStartLive}
                   type="button"
@@ -359,18 +402,43 @@ export default function GauntletDashboard({
                   Live
                 </button>
                 <button
-                  className="rounded-full border border-white/12 bg-white/4 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-white/24 hover:bg-white/8"
+                  className="rounded-full border border-[color:var(--rule-strong)] bg-transparent px-3.5 py-1.5 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-[color:var(--paper-dim)] transition hover:text-[color:var(--paper)]"
                   onClick={handleReset}
                   type="button"
                 >
                   Reset
                 </button>
+
+                <span className="ml-auto flex items-center gap-2 text-[color:var(--paper-mute)]">
+                  <span className="kbd">1</span>
+                  <span className="kbd">2</span>
+                  <span className="kbd">3</span>
+                  <span className="hidden font-mono text-[0.64rem] uppercase tracking-[0.18em] sm:inline">
+                    attacks
+                  </span>
+                  <span className="kbd ml-1">C</span>
+                  <span className="hidden font-mono text-[0.64rem] uppercase tracking-[0.18em] sm:inline">
+                    camel
+                  </span>
+                  <span className="kbd ml-1">R</span>
+                  <span className="hidden font-mono text-[0.64rem] uppercase tracking-[0.18em] sm:inline">
+                    reset
+                  </span>
+                </span>
               </div>
-            </div>
+            </aside>
           </div>
+
+          <AttackPicker
+            activeKind={selectedAttackKind}
+            onSelect={
+              streamMode === "live" ? handleStartLiveAttack : handleStartAttack
+            }
+            options={attackChoices}
+          />
         </header>
 
-        <main className="grid flex-1 items-start gap-4 xl:grid-cols-[0.94fr_1.3fr_0.9fr]">
+        <main className="grid flex-1 items-start gap-4 xl:grid-cols-[0.94fr_1.3fr_0.96fr]">
           <AttackFeed attacks={snapshot.attacks} />
           <Transcript
             key={runKey}
@@ -381,6 +449,7 @@ export default function GauntletDashboard({
             currentReport={snapshot.currentReport}
             comparisonReport={reportBaseline}
             exploitedCount={snapshot.exploitedCount}
+            fixMomentActive={fixMomentActive}
             isApplyingCaMeL={isApplyingCaMeL}
             onApplyCaMeL={handleApplyCaMeL}
             pendingCount={snapshot.pendingCount}
@@ -390,54 +459,6 @@ export default function GauntletDashboard({
 
         <SponsorFooter />
       </div>
-
-      {showCaMeLFlash ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(4,10,18,0.84)] p-4 backdrop-blur-md">
-          <div className="panel-shell w-full max-w-4xl overflow-hidden border-emerald-300/28 bg-[linear-gradient(135deg,rgba(53,213,166,0.18),rgba(6,17,28,0.92))] p-6 shadow-[0_40px_120px_rgba(53,213,166,0.18)]">
-            <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-              <div className="space-y-3">
-                <p className="capsule w-fit border-emerald-300/24 bg-emerald-300/10 text-emerald-50">
-                  <span className="capsule-dot bg-emerald-300" />
-                  CaMeL boundary live
-                </p>
-                <h2 className="text-3xl font-semibold tracking-[-0.05em] text-white">
-                  The trusted boundary is now in the loop.
-                </h2>
-                <p className="max-w-xl text-sm leading-7 text-emerald-50/85 sm:text-base">
-                  Re-running the selected attack through CaMeL isolates the unsafe
-                  instruction path before it reaches the agent.
-                </p>
-              </div>
-
-              <div className="metric-card flex min-h-[220px] items-center justify-center overflow-hidden rounded-[1.5rem] border border-white/10 bg-black/25 p-4">
-                {showCamelImage ? (
-                  <div className="relative h-full min-h-[220px] w-full overflow-hidden rounded-[1rem]">
-                    <Image
-                      alt="CaMeL architecture diagram"
-                      className="object-cover"
-                      fill
-                      onError={() => setShowCamelImage(false)}
-                      sizes="(min-width: 1024px) 30vw, 100vw"
-                      src="/api/camel-diagram"
-                      unoptimized
-                    />
-                  </div>
-                ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center rounded-[1rem] border border-dashed border-white/18 bg-black/18 p-6 text-center">
-                    <p className="font-mono text-[0.72rem] uppercase tracking-[0.22em] text-emerald-100">
-                      Boundary diagram
-                    </p>
-                    <p className="mt-3 max-w-xs text-sm leading-7 text-slate-200">
-                      The rerun is moving through the trusted boundary before the next
-                      verdict is scored.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

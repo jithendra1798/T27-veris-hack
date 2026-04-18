@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import AudioWaveform from "@/components/AudioWaveform";
 import type { DashboardAttack } from "@/lib/events";
 
 type TranscriptProps = {
@@ -9,19 +10,8 @@ type TranscriptProps = {
 };
 
 function verdictLabel(attack: DashboardAttack) {
-  if (!attack.verdict) {
-    return "Evaluating";
-  }
-
+  if (!attack.verdict) return "Evaluating";
   return attack.verdict.exploited ? "Exploit confirmed" : "Attack held";
-}
-
-function attackTone(attack: DashboardAttack) {
-  if (!attack.verdict) {
-    return "metric-card border-white/10";
-  }
-
-  return attack.verdict.exploited ? "danger-card" : "success-card";
 }
 
 function strikeClass(
@@ -29,23 +19,44 @@ function strikeClass(
   strikingIds: Record<string, boolean>,
   settledIds: Record<string, boolean>,
 ) {
-  if (!attack.verdict?.exploited) {
-    return "";
-  }
-
-  if (strikingIds[attack.id]) {
-    return "danger-strike-active";
-  }
-
-  if (settledIds[attack.id]) {
-    return "danger-strike-settled";
-  }
-
+  if (!attack.verdict?.exploited) return "";
+  if (strikingIds[attack.id]) return "danger-strike-active";
+  if (settledIds[attack.id]) return "danger-strike-settled";
   return "";
 }
 
 function formatAttackClass(value: DashboardAttack["attack_class"]) {
   return value.replaceAll("_", " ");
+}
+
+function VerdictStamp({
+  attack,
+  featured = false,
+}: {
+  attack: DashboardAttack;
+  featured?: boolean;
+}) {
+  if (!attack.verdict) {
+    return (
+      <span className={`verdict-stamp verdict-stamp-pending ${featured ? "" : "scale-90"}`}>
+        Evaluating
+      </span>
+    );
+  }
+
+  if (attack.verdict.exploited) {
+    return (
+      <span className={`verdict-stamp verdict-stamp-exploited ${featured ? "" : "scale-90"}`}>
+        Exploited
+      </span>
+    );
+  }
+
+  return (
+    <span className={`verdict-stamp verdict-stamp-held ${featured ? "" : "scale-90"}`}>
+      Held
+    </span>
+  );
 }
 
 export default function Transcript({
@@ -63,13 +74,8 @@ export default function Transcript({
   const citationTimersRef = useRef<number[]>([]);
 
   function clearTrackedTimers() {
-    for (const timer of strikeTimersRef.current) {
-      window.clearTimeout(timer);
-    }
-    for (const timer of citationTimersRef.current) {
-      window.clearTimeout(timer);
-    }
-
+    for (const timer of strikeTimersRef.current) window.clearTimeout(timer);
+    for (const timer of citationTimersRef.current) window.clearTimeout(timer);
     strikeTimersRef.current = [];
     citationTimersRef.current = [];
   }
@@ -115,79 +121,59 @@ export default function Transcript({
     ? [...attacks].reverse().filter((attack) => attack.id !== featuredAttack.id)
     : [...attacks].reverse();
 
-  function renderAttack(attack: DashboardAttack, featured = false) {
-    const isExploited = attack.verdict?.exploited;
+  function renderFeatured(attack: DashboardAttack) {
     const textClass = strikeClass(attack, strikingIds, settledIds);
+    const isHeld = attack.verdict && !attack.verdict.exploited;
+    const isExploited = attack.verdict?.exploited;
+    const cardTone = isExploited
+      ? "featured-card-exploited"
+      : isHeld
+        ? "featured-card-held"
+        : "";
 
     return (
-      <article
-        className={`rounded-[1.6rem] border p-4 sm:p-5 ${attackTone(attack)}`}
-        key={attack.id}
-      >
+      <article className={`featured-card ${cardTone}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-slate-400">
-              {featured ? "Stage focus" : attack.persona}
-            </p>
-            <h3 className="mt-2 text-lg font-semibold text-white">
-              {featured ? attack.persona : verdictLabel(attack)}
+            <p className="overline">Stage focus</p>
+            <h3
+              className="display-tight mt-2 text-[color:var(--paper)]"
+              style={{ fontSize: "1.65rem", lineHeight: 1.1 }}
+            >
+              {attack.persona}
             </h3>
+            <p className="byline mt-1 text-[color:var(--paper-mute)]">
+              {formatAttackClass(attack.attack_class)}
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs font-mono uppercase tracking-[0.18em] text-slate-200">
-              {formatAttackClass(attack.attack_class)}
-            </span>
-            <span
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                isExploited
-                  ? "border-rose-300/30 bg-rose-300/12 text-rose-50"
-                  : attack.verdict
-                    ? "border-emerald-300/26 bg-emerald-300/12 text-emerald-50"
-                    : "border-amber-300/24 bg-amber-300/10 text-amber-50"
-              }`}
-            >
-              {verdictLabel(attack)}
-            </span>
-          </div>
+          <VerdictStamp attack={attack} featured />
         </div>
 
-        <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-black/20 p-4">
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-slate-400">
-            Attack script
-          </p>
-          <p
-            className={`editorial-copy mt-3 text-base leading-8 text-slate-100 ${
-              featured ? "sm:text-lg sm:leading-9" : ""
-            } ${textClass}`}
-          >
-            {attack.text}
-          </p>
+        <div className="mt-5">
+          <span className="pull-quote-glyph">&ldquo;</span>
+          <p className={`pull-quote drop-cap ${textClass}`}>{attack.text}</p>
         </div>
 
         <div
-          className={`mt-4 grid gap-3 ${
-            attack.audio_url && attack.verdict?.evidence ? "lg:grid-cols-2" : "grid-cols-1"
+          className={`mt-5 grid gap-3 ${
+            attack.audio_url && attack.verdict?.evidence
+              ? "lg:grid-cols-[1.05fr_1fr]"
+              : "grid-cols-1"
           }`}
         >
           {attack.audio_url ? (
-            <div className="rounded-[1.1rem] border border-cyan-300/14 bg-cyan-300/6 p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-white">Audio evidence</p>
-                <span className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-cyan-100">
-                  speaker ready
-                </span>
-              </div>
-              <audio controls preload="none" src={attack.audio_url} />
-            </div>
+            <AudioWaveform
+              src={attack.audio_url}
+              tone={isExploited ? "red" : "green"}
+              label={isExploited ? "Audio evidence — exploit" : "Audio evidence — rerun"}
+            />
           ) : null}
 
           {attack.verdict?.evidence ? (
-            <div className="rounded-[1.1rem] border border-white/10 bg-black/18 p-4">
-              <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">
-                Evaluator evidence
-              </p>
-              <p className="mt-2 text-sm leading-7 text-slate-200">
+            <div>
+              <p className="overline mb-2">Editor&rsquo;s note</p>
+              <p className="editor-note text-[0.95rem]">
                 {attack.verdict.evidence}
               </p>
             </div>
@@ -195,59 +181,101 @@ export default function Transcript({
         </div>
 
         {attack.citations.length > 0 && visibleCitationIds[attack.id] ? (
-          <div className="citation-reveal mt-4 grid gap-3 md:grid-cols-2">
-            {attack.citations.slice(0, 2).map((citation) => (
-              <a
-                className="rounded-[1.1rem] border border-white/10 bg-white/6 p-4 transition hover:border-cyan-300/30 hover:bg-cyan-300/8"
-                href={citation.url}
-                key={`${attack.id}-${citation.url}`}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-cyan-100">
-                  You.com research
-                </p>
-                <h4 className="mt-2 text-sm font-semibold text-white">
-                  {citation.title}
-                </h4>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  {citation.note}
-                </p>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="text-xs text-slate-400">{citation.source}</p>
-                  <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-cyan-100">
-                    view source
-                  </p>
-                </div>
-              </a>
-            ))}
+          <div className="citation-reveal mt-5 border-t border-[color:var(--rule)] pt-4">
+            <p className="overline mb-2">Footnotes · You.com research</p>
+            <ol className="grid gap-3 md:grid-cols-2">
+              {attack.citations.slice(0, 2).map((citation, index) => (
+                <li
+                  className="rounded-lg border border-[color:var(--rule)] bg-[color:var(--ink)]/50 p-3.5 transition hover:border-[color:var(--gold-line)]"
+                  key={`${attack.id}-${citation.url}`}
+                >
+                  <a
+                    className="group block"
+                    href={citation.url}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <div className="flex items-baseline gap-2">
+                      <span className="footnote-sup">§{index + 1}</span>
+                      <h4 className="display-tight text-[0.95rem] leading-snug text-[color:var(--paper)]">
+                        {citation.title}
+                      </h4>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--paper-dim)]">
+                      {citation.note}
+                    </p>
+                    <div className="mt-2.5 flex items-center justify-between">
+                      <span className="byline">{citation.source}</span>
+                      <span className="footnote-link group-hover:text-[color:#f0d49b]">
+                        View source →
+                      </span>
+                    </div>
+                  </a>
+                </li>
+              ))}
+            </ol>
           </div>
         ) : null}
       </article>
     );
   }
 
+  function renderSecondary(attack: DashboardAttack) {
+    const textClass = strikeClass(attack, strikingIds, settledIds);
+    const isExploited = attack.verdict?.exploited;
+
+    return (
+      <article
+        className={`rounded-xl border p-4 ${
+          isExploited
+            ? "border-[color:rgba(255,59,71,0.28)] bg-[rgba(255,59,71,0.04)]"
+            : attack.verdict
+              ? "border-[color:rgba(0,196,140,0.28)] bg-[rgba(0,196,140,0.04)]"
+              : "border-[color:var(--rule)] bg-[color:var(--ink)]/40"
+        }`}
+        key={attack.id}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="byline text-[color:var(--paper-mute)]">
+              {attack.persona} · {formatAttackClass(attack.attack_class)}
+            </p>
+            <h3
+              className="display-tight mt-1 text-[color:var(--paper)]"
+              style={{ fontSize: "1rem", lineHeight: 1.25 }}
+            >
+              {verdictLabel(attack)}
+            </h3>
+          </div>
+          <VerdictStamp attack={attack} />
+        </div>
+
+        <p
+          className={`mt-3 text-[0.92rem] leading-6 text-[color:var(--paper-dim)] ${textClass}`}
+        >
+          {attack.text}
+        </p>
+      </article>
+    );
+  }
+
   return (
-    <section className="panel-shell panel-enter flex min-h-[320px] flex-col p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
+    <section className="paper-card-stage panel-enter flex min-h-[320px] flex-col p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-4 pb-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-            Transcript
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
-            Attack text, evidence, and citations
+          <p className="overline">Transcript</p>
+          <h2
+            className="display-tight mt-1 text-[color:var(--paper)]"
+            style={{ fontSize: "1.55rem", lineHeight: 1.1 }}
+          >
+            Attack text, evidence, footnotes
           </h2>
         </div>
 
         {featuredAttack ? (
-          <div className="metric-card min-w-[220px] rounded-[1.35rem] px-4 py-4 text-right">
-            <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-slate-400">
-              Stage focus
-            </p>
-            <p className="mt-1 text-sm font-semibold text-white">
-              {featuredAttack.persona}
-            </p>
-            <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-300">
+          <div className="hidden flex-col items-end gap-1 text-right sm:flex">
+            <p className="overline">Stage focus</p>
+            <p className="byline">
               {featuredAttack.verdict?.exploited
                 ? "Exploit visible"
                 : featuredAttack.verdict
@@ -258,15 +286,17 @@ export default function Transcript({
         ) : null}
       </div>
 
-      {featuredAttack ? <div className="mt-4">{renderAttack(featuredAttack, true)}</div> : null}
+      <hr className="rule-h m-0 border-0" />
 
-      <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1 soft-scroll">
-        {remainingAttacks.map((attack) => renderAttack(attack))}
+      {featuredAttack ? <div className="mt-4">{renderFeatured(featuredAttack)}</div> : null}
+
+      <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1 soft-scroll">
+        {remainingAttacks.map((attack) => renderSecondary(attack))}
 
         {attacks.length === 0 ? (
-          <div className="metric-card flex h-full min-h-[220px] items-center justify-center rounded-[1.6rem] border border-dashed border-white/12 p-6 text-center text-sm leading-7 text-slate-300">
-            Attack text, audio, evidence, and citations will appear here after the
-            run starts.
+          <div className="flex h-full min-h-[220px] items-center justify-center rounded-xl border border-dashed border-[color:var(--rule)] p-6 text-center text-sm leading-7 text-[color:var(--paper-dim)]">
+            Attack text, audio, evidence, and footnotes will appear here after
+            the run starts.
           </div>
         ) : null}
       </div>
