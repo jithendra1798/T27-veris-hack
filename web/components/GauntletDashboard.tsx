@@ -38,6 +38,8 @@ export default function GauntletDashboard({
   modeToggleUrl,
   sseUrl,
 }: GauntletDashboardProps) {
+  const attackRunUrl = sseUrl.replace(/\/events\/?$/, "/attack/run");
+
   const [streamMode, setStreamMode] = useState<StreamMode>("demo");
   const [targetMode, setTargetMode] = useState<TargetMode>("vulnerable");
   const [demoEvents, setDemoEvents] = useState<SSEEvent[]>([]);
@@ -103,6 +105,30 @@ export default function GauntletDashboard({
     setIsApplyingCaMeL(false);
     setStatusNotice(null);
     queueSequence(buildDemoRunSequence(kind));
+  }
+
+  async function handleStartLiveAttack(kind: AttackKind) {
+    clearDemoTimers();
+    clearFlashTimer();
+    setShowCaMeLFlash(false);
+    setShowCamelImage(true);
+    setStreamMode("live");
+    setTargetMode("vulnerable");
+    setDemoEvents([]);
+    setSelectedAttackKind(kind);
+    setComparisonReport(null);
+    setIsApplyingCaMeL(false);
+    setStatusNotice(null);
+
+    try {
+      await fetch(attackRunUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attack_class: kind, max_attacks: 10 }),
+      });
+    } catch {
+      setStatusNotice("Could not reach the attack service.");
+    }
   }
 
   function handleStartLive() {
@@ -182,6 +208,15 @@ export default function GauntletDashboard({
       setStatusNotice("Defense control is unavailable.");
     } else {
       setStatusNotice("Defense rerun requested.");
+      try {
+        await fetch(attackRunUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attack_class: activeKind, max_attacks: 10 }),
+        });
+      } catch {
+        setStatusNotice("Defense rerun could not be triggered.");
+      }
     }
 
     setIsApplyingCaMeL(false);
@@ -291,7 +326,7 @@ export default function GauntletDashboard({
 
             <AttackPicker
               activeKind={selectedAttackKind}
-              onSelect={handleStartAttack}
+              onSelect={streamMode === "live" ? handleStartLiveAttack : handleStartAttack}
               options={attackChoices}
             />
 

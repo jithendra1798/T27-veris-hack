@@ -41,7 +41,7 @@ class EventBus:
                 cursor = len(self._events)
 
             for event in new_events:
-                yield f"data: {json.dumps(event)}\n\n"
+                yield json.dumps(event)
 
     def reset(self) -> None:
         """Clear all events (e.g. between demo runs)."""

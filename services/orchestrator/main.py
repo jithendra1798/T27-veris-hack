@@ -108,6 +108,13 @@ async def run_attacks(req: AttackRunRequest):
 
     # Run attacks in background so the HTTP response returns immediately
     async def _run():
+        reset_verdicts()
+        run_id = str(uuid.uuid4())
+        await event_bus.emit({
+            "type": "run.started",
+            "run_id": run_id,
+            "attack_class": req.attack_class,
+        })
         results = []
         for scenario in scenarios:
             try:
@@ -124,6 +131,10 @@ async def run_attacks(req: AttackRunRequest):
                     results.append(event)
                 except Exception as retry_exc:
                     print(f"[orchestrator] Retry failed: {retry_exc}")
+        await event_bus.emit({
+            "type": "run.complete",
+            "run_id": run_id,
+        })
 
     asyncio.create_task(_run())
 
