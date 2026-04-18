@@ -69,8 +69,8 @@ export async function loadCitations(): Promise<CitationLookup> {
     const raw = await readFile(CITATIONS_PATH, "utf-8");
     const parsed = JSON.parse(raw) as Record<
       string,
-      | { title?: string; source?: string; url?: string; summary?: string; note?: string }
-      | Array<{ title?: string; source?: string; url?: string; summary?: string; note?: string }>
+      | { title?: string; source?: string; url?: string; summary?: string; note?: string; snippet?: string }
+      | Array<{ title?: string; source?: string; url?: string; summary?: string; note?: string; snippet?: string }>
     >;
 
     const lookup: CitationLookup = {};
@@ -81,7 +81,7 @@ export async function loadCitations(): Promise<CitationLookup> {
         title: item.title ?? "Research citation",
         source: item.source ?? "You.com",
         url: item.url ?? "#",
-        note: item.note ?? item.summary ?? "",
+        note: item.note ?? item.snippet ?? item.summary ?? "",
       }));
     }
 
