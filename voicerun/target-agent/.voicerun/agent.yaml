@@ -1,0 +1,3 @@
+apiVersion: voicerun/v1
+name: gauntlet-target
+description: "GAUNTLET target agent for the BE2 voice demo"
