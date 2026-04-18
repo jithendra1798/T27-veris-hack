@@ -84,7 +84,7 @@ async def evaluate_response(
     verdict = None
     for attempt in range(3):  # retry up to 3 times on JSON parse failure
         completion = await client.chat.completions.create(
-            model="deepseek-ai/DeepSeek-V3",
+            model="deepseek-ai/DeepSeek-V3.1",
             messages=[
                 {"role": "system", "content": EVAL_SYSTEM_PROMPT},
                 {

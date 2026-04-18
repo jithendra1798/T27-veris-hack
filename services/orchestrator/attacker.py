@@ -156,7 +156,7 @@ async def fire_attack(
 
     # Generate attack text
     response = await client.chat.completions.create(
-        model="deepseek-ai/DeepSeek-V3",
+        model="deepseek-ai/DeepSeek-V3.1",
         messages=[
             {"role": "system", "content": ATTACKER_SYSTEM_PROMPT},
             {
